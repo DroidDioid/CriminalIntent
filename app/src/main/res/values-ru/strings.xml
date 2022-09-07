@@ -6,4 +6,5 @@
     <string name="crime_details_label">Детали</string>
     <string name="crime_solved_label">Раскрыто</string>
     <string name="require_police">Вызвать полицию</string>
+    <string name="crime_is_solved">Преступление раскрыто.</string>
 </resources>

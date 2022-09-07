@@ -1,12 +1,14 @@
 package ru.tim.criminalintent
 
 import android.os.Bundle
+import android.text.format.DateFormat
 import android.util.Log
 import android.view.ActionProvider
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -58,6 +60,7 @@ class CrimeListFragment : Fragment() {
         private val titleTextView: TextView = itemView.findViewById(R.id.crime_title)
         private val dateTextView: TextView = itemView.findViewById(R.id.crime_date)
         private val requirePoliceButton: Button? = itemView.findViewById(R.id.require_police_button)
+        private val solvedImageView: ImageView? = itemView.findViewById(R.id.crime_solved_image)
 
         init {
             itemView.setOnClickListener {
@@ -75,7 +78,12 @@ class CrimeListFragment : Fragment() {
         fun bind(crime: Crime) {
             this.crime = crime
             titleTextView.text = this.crime.title
-            dateTextView.text = this.crime.date.toString()
+            dateTextView.text = DateFormat.format("EEEE, dd MMMM, yyyy", this.crime.date)
+            solvedImageView?.visibility = if (crime.isSolved) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
         }
     }
 
@@ -97,9 +105,8 @@ class CrimeListFragment : Fragment() {
 
         override fun getItemCount() = crimes.size
 
-        override fun getItemViewType(position: Int): Int {
-            return crimes[position].requiresPolice.toInt()
-        }
+        override fun getItemViewType(position: Int) =
+            crimes[position].let { (it.requiresPolice && !it.isSolved).toInt() }
 
     }
 
