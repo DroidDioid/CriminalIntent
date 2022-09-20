@@ -1,6 +1,14 @@
 package ru.tim.criminalintent
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.ContactsContract
+import android.provider.ContactsContract.CommonDataKinds.Phone
 import android.text.Editable
 import android.text.TextWatcher
 import android.text.format.DateFormat
@@ -10,18 +18,96 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.setFragmentResultListener
+import androidx.lifecycle.ViewModelProvider
+import ru.tim.criminalintent.RationaleFragment.Companion.REQUEST_RATIONALE_KEY
+import java.util.*
+
+private const val TAG = "CrimeFragment"
+private const val ARG_CRIME_ID = "crime_id"
+private const val DIALOG_DATE = "DialogDate"
+private const val DIALOG_TIME = "DialogTime"
+private const val DATE_FORMAT = "EEEE, dd MMMM, yyyy"
+private const val TIME_FORMAT = "HH:mm"
+private const val DATE_REPORT_FORMAT = "EE, MMM, dd"
 
 class CrimeFragment : Fragment() {
 
     private lateinit var crime: Crime
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
+    private lateinit var timeButton: Button
     private lateinit var solvedCheckBox: CheckBox
+    private lateinit var suspectButton: Button
+    private lateinit var suspectPhoneButton: Button
+    private lateinit var reportButton: Button
+
+    private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
+        ViewModelProvider(this)[CrimeDetailViewModel::class.java]
+    }
+
+    private val contactsPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                try {
+                    pickContact.launch()
+                } catch (e: ActivityNotFoundException) {
+                    suspectButton.isEnabled = false
+                }
+            } else {
+                Toast.makeText(context, R.string.access_denied, Toast.LENGTH_LONG).show()
+            }
+        }
+
+    private val pickContact =
+        registerForActivityResult(ActivityResultContracts.PickContact()) { uri ->
+            pickContact(uri)
+        }
+
+    private val phoneCall =
+        registerForActivityResult(object : ActivityResultContract<String, Void?>() {
+            override fun createIntent(context: Context, input: String): Intent {
+                return Intent(Intent.ACTION_DIAL).apply {
+                    data = Uri.parse("tel:$input")
+                }
+            }
+
+            override fun parseResult(resultCode: Int, intent: Intent?): Void? {
+                return null
+            }
+
+        }) {}
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
+
+        val crimeId = arguments?.getSerializable(ARG_CRIME_ID) as UUID
+        crimeDetailViewModel.loadCrime(crimeId)
+
+        setFragmentResultListener(REQUEST_DATE_KEY) { _, bundle ->
+            bundle.getSerializable(RESULT_DATE_KEY)?.let {
+                crime.date = it as Date
+                updateUI()
+            }
+        }
+
+        setFragmentResultListener(REQUEST_TIME_KEY) { _, bundle ->
+            bundle.getSerializable(RESULT_TIME_KEY)?.let {
+                crime.date = it as Date
+                updateUI()
+            }
+        }
+
+        setFragmentResultListener(REQUEST_RATIONALE_KEY) { _, _ ->
+            contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+        }
     }
 
     override fun onCreateView(
@@ -30,17 +116,25 @@ class CrimeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_crime, container, false)
-
         titleField = view.findViewById(R.id.crime_title)
         dateButton = view.findViewById(R.id.crime_date)
+        timeButton = view.findViewById(R.id.crime_time)
         solvedCheckBox = view.findViewById(R.id.crime_solved)
-
-        dateButton.apply {
-            text = DateFormat.format("EEEE, dd MMMM, yyyy", crime.date)
-            isEnabled = false
-        }
+        suspectButton = view.findViewById(R.id.crime_suspect)
+        suspectPhoneButton = view.findViewById(R.id.crime_suspect_phone)
+        reportButton = view.findViewById(R.id.crime_report)
 
         return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        crimeDetailViewModel.crimesLiveData.observe(viewLifecycleOwner) { crime ->
+            crime?.let {
+                this.crime = crime
+                updateUI()
+            }
+        }
     }
 
     override fun onStart() {
@@ -62,11 +156,142 @@ class CrimeFragment : Fragment() {
         solvedCheckBox.setOnCheckedChangeListener { _, isChecked ->
             crime.isSolved = isChecked
         }
+
+        dateButton.setOnClickListener {
+            DatePickerFragment.newInstance(crime.date).show(parentFragmentManager, DIALOG_DATE)
+        }
+
+        timeButton.setOnClickListener {
+            TimePickerFragment.newInstance(crime.date).show(parentFragmentManager, DIALOG_TIME)
+        }
+
+        suspectButton.setOnClickListener {
+            if (shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) {
+                RationaleFragment().show(parentFragmentManager, RationaleFragment.TAG)
+            } else {
+                contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+            }
+        }
+
+        suspectPhoneButton.setOnClickListener {
+            if (crime.suspectPhone.isNotEmpty()) {
+                try {
+                    phoneCall.launch(crime.suspectPhone)
+                } catch (e: ActivityNotFoundException) {
+                    suspectPhoneButton.isEnabled = false
+                }
+            } else {
+                Toast.makeText(context, R.string.crime_suspect_text, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        reportButton.setOnClickListener {
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, getCrimeReport())
+                putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crime_report_subject))
+            }.also { intent ->
+                val chooserIntent = Intent.createChooser(intent, getString(R.string.send_report))
+                startActivity(chooserIntent)
+
+                // Проверяем есть ли подходящие активити, если нет блокируем кнопку отчёта
+                val packageManager = requireActivity().packageManager
+                val resolvedActivity =
+                    packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                if (resolvedActivity == null) reportButton.isEnabled = false
+            }
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        crimeDetailViewModel.saveCrime(crime)
+    }
+
+    private fun pickContact(uri: Uri?) {
+        val queryFields = arrayOf(
+            ContactsContract.Contacts.DISPLAY_NAME,
+            ContactsContract.Contacts._ID
+        )
+        val cursor =
+            uri?.let {
+                requireActivity().contentResolver.query(
+                    it,
+                    queryFields,
+                    null,
+                    null,
+                    null
+                )
+            }
+
+        cursor?.use { c ->
+            if (c.count == 0) return@use
+
+            c.moveToFirst()
+            val suspect = c.getString(0)
+            crime.suspect = suspect
+
+            val suspectId = c.getString(1)
+            val phoneCursor = requireActivity().contentResolver.query(
+                Phone.CONTENT_URI,
+                arrayOf(Phone.NUMBER),
+                Phone.CONTACT_ID + " = $suspectId",
+                null,
+                null
+            )
+
+            phoneCursor?.use {
+                if (it.count != 0) {
+                    it.moveToFirst()
+                    val phone = it.getString(0)
+                    crime.suspectPhone = phone
+                }
+            }
+
+            crimeDetailViewModel.saveCrime(crime)
+            suspectButton.text = suspect
+        }
+    }
+
+    private fun updateUI() {
+        titleField.setText(crime.title)
+        dateButton.text = DateFormat.format(DATE_FORMAT, crime.date)
+        timeButton.text = DateFormat.format(TIME_FORMAT, crime.date)
+        solvedCheckBox.apply {
+            isChecked = crime.isSolved
+            jumpDrawablesToCurrentState()
+        }
+        if (crime.suspect.isNotEmpty()) {
+            suspectButton.text = crime.suspect
+
+            if (crime.suspectPhone.isNotEmpty()) {
+                suspectPhoneButton.text = crime.suspectPhone
+            }
+        }
+    }
+
+    private fun getCrimeReport(): String {
+        val solvedString = if (crime.isSolved) {
+            getString(R.string.crime_report_solved)
+        } else {
+            getString(R.string.crime_report_unsolved)
+        }
+
+        val dateString = DateFormat.format(DATE_REPORT_FORMAT, crime.date).toString()
+
+        val suspect = if (crime.suspect.isBlank()) {
+            getString(R.string.crime_report_no_suspect)
+        } else {
+            getString(R.string.crime_report_suspect, crime.suspect)
+        }
+
+        return getString(R.string.crime_report, crime.title, dateString, solvedString, suspect)
     }
 
     companion object {
-        fun newInstance(): CrimeFragment {
-            return CrimeFragment()
+        fun newInstance(crimeId: UUID): CrimeFragment {
+            val args = Bundle().apply { putSerializable(ARG_CRIME_ID, crimeId) }
+            return CrimeFragment().apply { arguments = args }
         }
     }
 }

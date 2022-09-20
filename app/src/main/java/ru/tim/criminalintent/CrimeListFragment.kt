@@ -1,36 +1,41 @@
 package ru.tim.criminalintent
 
+import android.content.Context
 import android.os.Bundle
 import android.text.format.DateFormat
-import android.util.Log
-import android.view.ActionProvider
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.view.*
+import android.widget.*
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ru.tim.criminalintent.CrimeListViewModel.Companion.toInt
+import java.util.*
 
 private const val TAG = "CrimeListFragment"
 
-class CrimeListFragment : Fragment() {
+class CrimeListFragment : Fragment(), MenuProvider {
 
+    interface Callbacks {
+        fun onCrimeSelected(crimeId: UUID)
+    }
+
+    private var callbacks: Callbacks? = null
+    private lateinit var newCrimeButton: Button
+    private lateinit var emptyListLayout: LinearLayout
     private lateinit var crimeRecyclerView: RecyclerView
-    private var adapter: CrimeAdapter? = null
+    private var adapter: CrimeAdapter? = CrimeAdapter(emptyList())
 
     private val crimeListViewModel: CrimeListViewModel by lazy {
         ViewModelProvider(this)[CrimeListViewModel::class.java]
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        Log.d(TAG, "Total crimes: ${crimeListViewModel.crimes.size}")
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        callbacks = context as Callbacks?
     }
 
     override fun onCreateView(
@@ -40,16 +45,64 @@ class CrimeListFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_crime_list, container, false)
 
+        newCrimeButton = view.findViewById(R.id.new_crime)
+        emptyListLayout = view.findViewById(R.id.empty_list)
         crimeRecyclerView = view.findViewById(R.id.crime_recycler_view)
         crimeRecyclerView.layoutManager = LinearLayoutManager(context)
-
-        updateUI()
+        crimeRecyclerView.adapter = adapter
 
         return view
     }
 
-    private fun updateUI() {
-        adapter = CrimeAdapter(crimeListViewModel.crimes)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val menuHost: MenuHost = requireActivity()
+
+        menuHost.addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+
+        crimeListViewModel.crimeListLiveData.observe(viewLifecycleOwner) { crimes ->
+            crimes?.let {
+                emptyListLayout.visibility = if (crimes.isNotEmpty()) View.GONE else View.VISIBLE
+                updateUI(crimes)
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        newCrimeButton.setOnClickListener {
+            createCrime()
+        }
+    }
+
+    override fun onDetach() {
+        super.onDetach()
+        callbacks = null
+    }
+
+    override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+        menuInflater.inflate(R.menu.fragment_crime_list, menu)
+    }
+
+    override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+        return when (menuItem.itemId) {
+            R.id.new_crime -> {
+                createCrime()
+                true
+            }
+            else -> false
+        }
+    }
+
+    private fun createCrime() {
+        val crime = Crime()
+        crimeListViewModel.addCrime(crime)
+        callbacks?.onCrimeSelected(crime.id)
+    }
+
+    private fun updateUI(crimes: List<Crime>) {
+        adapter = CrimeAdapter(crimes)
         crimeRecyclerView.adapter = adapter
     }
 
@@ -64,7 +117,7 @@ class CrimeListFragment : Fragment() {
 
         init {
             itemView.setOnClickListener {
-                Toast.makeText(context, "${crime.title} pressed!", Toast.LENGTH_SHORT).show()
+                callbacks?.onCrimeSelected(crime.id)
             }
             requirePoliceButton?.setOnClickListener {
                 Toast.makeText(
@@ -106,7 +159,7 @@ class CrimeListFragment : Fragment() {
         override fun getItemCount() = crimes.size
 
         override fun getItemViewType(position: Int) =
-            crimes[position].let { (it.requiresPolice && !it.isSolved).toInt() }
+            crimes[position].let { (!it.isSolved).toInt() }
 
     }
 

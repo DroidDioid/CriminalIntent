@@ -1,10 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Криминальные намерения</string>
-    <string name="crime_title_hint">Введите название преступления.</string>
+    <string name="crime_title_hint">Введите название преступления</string>
     <string name="crime_title_label">Название</string>
     <string name="crime_details_label">Детали</string>
     <string name="crime_solved_label">Раскрыто</string>
     <string name="require_police">Вызвать полицию</string>
     <string name="crime_is_solved">Преступление раскрыто.</string>
+    <string name="new_crime">Новое преступление</string>
+    <string name="list_is_empty">Список пуст</string>
+    <string name="crime_suspect_text">Выберите подозреваемого</string>
+    <string name="crime_report_text">Отправить отчёт по преступлению</string>
+    <string name="crime_report">%1$s! Преступление было обнаружено %2$s. %3$s, и %4$s</string>
+    <string name="crime_report_solved">Случай расследован</string>
+    <string name="crime_report_unsolved">Случай не расследован</string>
+    <string name="crime_report_no_suspect">нет подозреваемого</string>
+    <string name="crime_report_suspect">подозреваемый: %s</string>
+    <string name="crime_report_subject">CriminalIntent Отчёт по Преступлению</string>
+    <string name="send_report">Отправить отчёт по преступлению через</string>
+    <string name="call_suspect">Позвонить подозреваемому</string>
+    <string name="access_denied">Для выбора подозреваемого требуется разрешение на чтение контактов, которое было отклонено</string>
+    <string name="contacts_rationale_text">Приложению требуется доступ к контактам для извлечения данных о подозреваемом.\nВы сможете отозвать разрешение на доступ к контактам через меню настроек в любой момент.</string>
+    <string name="contacts_rationale_title">Разрешить доступ к контактам?</string>
+    <string name="understood_text">Понятно</string>
 </resources>
