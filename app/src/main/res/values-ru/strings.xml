@@ -19,8 +19,16 @@
     <string name="crime_report_subject">CriminalIntent Отчёт по Преступлению</string>
     <string name="send_report">Отправить отчёт по преступлению через</string>
     <string name="call_suspect">Позвонить подозреваемому</string>
-    <string name="access_denied">Для выбора подозреваемого требуется разрешение на чтение контактов, которое было отклонено</string>
+    <string name="contacts_access_denied">Для выбора подозреваемого требуется разрешение на чтение контактов, которое было отклонено</string>
     <string name="contacts_rationale_text">Приложению требуется доступ к контактам для извлечения данных о подозреваемом.\nВы сможете отозвать разрешение на доступ к контактам через меню настроек в любой момент.</string>
     <string name="contacts_rationale_title">Разрешить доступ к контактам?</string>
     <string name="understood_text">Понятно</string>
+    <string name="make_a_photo">Сфотографировать</string>
+    <string name="crime_photo">Фотография преступления (задана)</string>
+    <string name="camera_access_denied">Чтобы сфотографировать преступление требуется разрешение на доступ к камере,которое было отклонено</string>
+    <string name="camera_rationale_text">Приложению требуется доступ к камере для создания фотографии. Вы сможете отозвать разрешение на доступ к камере через меню настроек в любой момент.</string>
+    <string name="camera_rationale_title">Разрешить доступ к камере?</string>
+    <string name="enlarged_image">Увеличенное изображение преступления</string>
+    <string name="crime_no_photo">Фотография преступления (не задана)</string>
+    <string name="list_item_crime_description">%1$s! Преступление было обнаружено %2$s. %3$s</string>
 </resources>

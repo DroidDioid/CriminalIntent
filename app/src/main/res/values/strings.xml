@@ -18,8 +18,16 @@
     <string name="crime_report_subject">CriminalIntent Crime Report</string>
     <string name="send_report">Send crime report via</string>
     <string name="call_suspect">Call suspect</string>
-    <string name="access_denied">Selecting a suspect requires permission to read contacts, which was denied</string>
+    <string name="contacts_access_denied">Selecting a suspect requires permission to read contacts, which was denied</string>
     <string name="contacts_rationale_text">The app needs access to contacts to retrieve data about the suspect.\nYou can revoke permission to access contacts through the settings menu at any time.</string>
     <string name="contacts_rationale_title">Allow access to contacts?</string>
     <string name="understood_text">Understood</string>
+    <string name="make_a_photo">Make a photo</string>
+    <string name="crime_photo">Crime photo (set)</string>
+    <string name="crime_no_photo">Crime photo (not set)</string>
+    <string name="camera_access_denied">Photographing the crime required permission to access the camera, which was denied</string>
+    <string name="camera_rationale_title">Allow access to camera?</string>
+    <string name="camera_rationale_text">The app needs access to the camera to make a photo.\nYou can revoke permission to access the camera through the settings menu at any time.</string>
+    <string name="enlarged_image">Enlarged image of the crime</string>
+    <string name="list_item_crime_description">%1$s! The crime was discovered on %2$s. %3$s.</string>
 </resources>

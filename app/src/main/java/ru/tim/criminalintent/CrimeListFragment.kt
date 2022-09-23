@@ -106,7 +106,7 @@ class CrimeListFragment : Fragment(), MenuProvider {
         crimeRecyclerView.adapter = adapter
     }
 
-    private inner class CrimeHolder(view: View) : RecyclerView.ViewHolder(view) {
+    private inner class CrimeHolder(val view: View) : RecyclerView.ViewHolder(view) {
 
         private lateinit var crime: Crime
 
@@ -137,6 +137,20 @@ class CrimeListFragment : Fragment(), MenuProvider {
             } else {
                 View.GONE
             }
+
+            val solvedString = if (crime.isSolved) {
+                getString(R.string.crime_report_solved)
+            } else {
+                getString(R.string.crime_report_unsolved)
+            }
+
+            val dateString = DateFormat.getLongDateFormat(requireContext()).format(crime.date)
+            view.contentDescription = getString(
+                R.string.list_item_crime_description,
+                crime.title,
+                dateString,
+                solvedString
+            )
         }
     }
 
